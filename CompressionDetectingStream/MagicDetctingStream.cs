@@ -3,67 +3,41 @@ using System.IO;
 
 namespace CompressionDetectingStream
 {
-    public partial class MagicDetctingStream : Stream
+    public partial class MagicDetctingStream : AForwardStream
     {
         public const int MAGIC_BUFFER_SIZE = 512; // tar has "ustar" magic at 257
-        IStreamFactory Factory { get; }
-        Stream SourceStream { get; }
 
-        public override bool CanRead => SourceStream.CanRead;
-
-        public override bool CanSeek => SourceStream.CanSeek;
-
-        public override bool CanWrite => SourceStream.CanWrite;
-
-        public override long Length => SourceStream.Length;
-
-        public override long Position { get => SourceStream.Position; set => SourceStream.Position = value; }
-
-        public MagicDetctingStream(Stream sourceStream, IStreamFactory factory)
+        public Stream RawStream { get; }
+        IStreamFactory StreamFactory { get; }
+        public Stream StreamImplementation { get; private set; }
+        public MagicDetctingStream(Stream rawStream) : this(rawStream, new DefaultStreamFactory())
+        {}
+        public MagicDetctingStream(Stream rawStream, IStreamFactory streamFactory) 
         {
-            SourceStream = sourceStream;
-            Factory = factory;
+            RawStream = rawStream;
+            StreamFactory = streamFactory;
         }
 
-        public override void Flush()
+        public override Stream SourceStream
         {
-            SourceStream.Flush();
-        }
-
-        Stream StreamImplementation;
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            if (StreamImplementation == null) { 
-                Span<byte> buf = stackalloc byte[MAGIC_BUFFER_SIZE];
-                int l = 0;
-                while(l < MAGIC_BUFFER_SIZE)
+            get
+            {
+                if (StreamImplementation == null)
                 {
-                    var read = SourceStream.Read(buf.Slice(l));
-                    if (read <= 0)
-                        break;
-                    l += read;
+                    Span<byte> buf = stackalloc byte[MAGIC_BUFFER_SIZE];
+                    int l = 0;
+                    while (l < MAGIC_BUFFER_SIZE)
+                    {
+                        var read = RawStream.Read(buf.Slice(l));
+                        if (read <= 0)
+                            break;
+                        l += read;
+                    }
+                    var magic = buf.Slice(0, l).ToArray();
+                    StreamImplementation = StreamFactory.DetectStream(magic, new PrefixStream(magic, RawStream));
                 }
-
-                var magic = buf.Slice(0, l).ToArray();
-                StreamImplementation = Factory.DetectStream(magic,  new PrefixStream(magic, SourceStream));
+                return StreamImplementation;
             }
-            return StreamImplementation.Read(buffer, offset, count);
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            return SourceStream.Seek(offset, origin);
-        }
-
-        public override void SetLength(long value)
-        {
-            SourceStream.SetLength(value);
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            SourceStream.Write(buffer, offset, count);
         }
     }
 }

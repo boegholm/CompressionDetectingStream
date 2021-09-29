@@ -49,7 +49,6 @@ namespace CompressionDetectingStream.Tests
             var ps = new MagicDetctingStream(ms, new DefaultStreamFactory());
             Span<byte> actual = stackalloc byte[512];
             int k = ps.Read(actual);
-
             Assert.Equal("ustar", Encoding.ASCII.GetString(actual.Slice(257, 6)).Substring(0, 5));
         }
     }
