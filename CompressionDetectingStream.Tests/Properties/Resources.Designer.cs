@@ -63,9 +63,19 @@ namespace CompressionDetectingStream.Tests.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] fooo {
+        internal static byte[] fooo_gz {
             get {
-                object obj = ResourceManager.GetObject("fooo", resourceCulture);
+                object obj = ResourceManager.GetObject("fooo_gz", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] fooo_tar {
+            get {
+                object obj = ResourceManager.GetObject("fooo_tar", resourceCulture);
                 return ((byte[])(obj));
             }
         }

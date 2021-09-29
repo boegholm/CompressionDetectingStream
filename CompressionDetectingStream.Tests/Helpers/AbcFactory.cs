@@ -8,13 +8,12 @@ namespace CompressionDetectingStream.Tests.Helpers
 {
     class AbcFactory : IStreamFactory
     {
-        bool ContainsMagic(byte[] magicField, params byte[] prefix) => 
-            magicField.Length >= prefix.Length &&
-            magicField.Take(prefix.Length).Zip(prefix).All(v => v.First == v.Second);
-        bool ContainsMagic(byte[] magicField, string prefix) =>
+        bool ContainsMagic(Span<byte> magicField, params byte[] prefix) =>
+            magicField.Length >= prefix.Length && magicField.Slice(0, prefix.Length).SequenceEqual(prefix);
+        bool ContainsMagic(Span<byte> magicField, string prefix) =>
             ContainsMagic(magicField, Encoding.ASCII.GetBytes(prefix));
 
-        public Stream DetectStream(byte[] magicField, Stream peekingStream)
+        public Stream DetectStream(Span<byte> magicField, Stream peekingStream)
         {
             return magicField switch
             {

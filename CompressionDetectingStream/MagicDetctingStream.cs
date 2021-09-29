@@ -5,6 +5,7 @@ namespace CompressionDetectingStream
 {
     public partial class MagicDetctingStream : Stream
     {
+        public const int MAGIC_BUFFER_SIZE = 512; // tar has "ustar" magic at 257
         IStreamFactory Factory { get; }
         Stream SourceStream { get; }
 
@@ -29,17 +30,25 @@ namespace CompressionDetectingStream
             SourceStream.Flush();
         }
 
-        Stream f;
+        Stream StreamImplementation;
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if (f == null) { 
-                Span<byte> buf = stackalloc byte[8];
-                int l = SourceStream.Read(buf);
+            if (StreamImplementation == null) { 
+                Span<byte> buf = stackalloc byte[MAGIC_BUFFER_SIZE];
+                int l = 0;
+                while(l < MAGIC_BUFFER_SIZE)
+                {
+                    var read = SourceStream.Read(buf.Slice(l));
+                    if (read <= 0)
+                        break;
+                    l += read;
+                }
+
                 var magic = buf.Slice(0, l).ToArray();
-                f = Factory.DetectStream(magic,  new PrefixStream(magic, SourceStream));
+                StreamImplementation = Factory.DetectStream(magic,  new PrefixStream(magic, SourceStream));
             }
-            return f.Read(buffer, offset, count);
+            return StreamImplementation.Read(buffer, offset, count);
         }
 
         public override long Seek(long offset, SeekOrigin origin)
